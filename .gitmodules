@@ -1,0 +1,3 @@
+[submodule "smart-contract-sanctuary"]
+	path = smart-contract-sanctuary
+	url = https://github.com/tintinweb/smart-contract-sanctuary

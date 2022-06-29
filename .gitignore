@@ -1,0 +1,6 @@
+.env
+.mypy_cache
+.nvim
+.nvimlog
+test.py
+**/__pycache__/**
