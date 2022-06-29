@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from gevent.monkey import patch_all
+
+patch_all()
+
+from typing import List
 import sys
 import os
 import re
-from typing import List
 
 from eth_abi.grammar import normalize
+from gevent.greenlet import Greenlet
 from gevent.pool import Pool
 from web3 import Web3
+import gevent
 
 # Assume user is invoking this script at root folder.
 # `$ python3 scripts/sc_sanctuary_dumper.py <chain>`
@@ -83,6 +89,7 @@ def _handle_source_code(path: str, regex: re.Pattern, __type: str) -> None:
     with open(path) as f:
         source = f.read()
 
+    threads: List[Greenlet] = []
     ret = regex.findall(source)
     abi_methods = set()
 
@@ -128,11 +135,12 @@ def _handle_source_code(path: str, regex: re.Pattern, __type: str) -> None:
         # Read then write rather than write only to save useless writes.
         if not get_abi_data(__type, sig):
             # upload_abi_data(__type, sig, method)
-            pool.spawn(upload_abi_data, __type, sig, method)
+            t = pool.spawn(upload_abi_data, __type, sig, method)
+            threads.append(t)
     # else:
     #     print("miss", method)
 
-    pool.join(raise_error=True)
+    gevent.joinall(threads)
 
 
 def handle_source_code(path: str) -> None:
@@ -148,7 +156,10 @@ def run_chain(chain: str) -> None:
     for dir, _, files in os.walk(_path):
         for file in files:
             if file.endswith(".sol"):
-                handle_source_code(os.path.join(dir, file))
+                # handle_source_code(os.path.join(dir, file))
+                pool.spawn(handle_source_code, os.path.join(dir, file))
+
+    pool.join()
 
 
 if __name__ == "__main__":
