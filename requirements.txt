@@ -1,0 +1,8 @@
+gevent==21.12.0
+hexbytes==0.2.2
+boto3==1.24.17
+python-dotenv==0.19.2
+requests==2.27.1
+web3 @ git+https://github.com/ethereum/web3.py@c68f6564ef85c17c5162ce2493d6db16e755516c
+aws-lambda-typing==2.13.0
+simplejson==3.17.6
