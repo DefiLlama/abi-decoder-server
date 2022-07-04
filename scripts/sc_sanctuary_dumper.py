@@ -50,6 +50,9 @@ TYPES = {
 
 
 def _is_valid_type(var: str) -> bool:
+    if var.endswith("[]"):
+        var = var[: len(var) - 2]
+
     if var in TYPES:
         return True
 
