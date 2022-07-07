@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from typing import Dict, List, Optional, Tuple, cast
+from collections import defaultdict
 
 from boto3.dynamodb.conditions import Key
 from hexbytes import HexBytes
@@ -50,19 +51,36 @@ def upload_abi_data_contract(
     ), "put_item failed"
 
 
-def get_abi_data(_type: str, signature: HexBytes) -> Optional[Dict[str, str]]:
+def get_abi_data(_type: str, signature: HexBytes):
     assert _type in ["function", "event"]
 
-    res: Dict[str, str] = {}
+    if _type == "function":
+        assert len(signature) == 4  # Function selector.
+    elif _type == "event":
+        assert len(signature) == 32  # Topic hash.
+
+    res: Dict[str, List[str]] = defaultdict(list)
 
     ret = abi_table.query(
         KeyConditionExpression=Key("PK").eq(f"{_type}#{signature.hex()}")
     )
 
-    if ret["Count"] != 0:
-        for item in ret["Items"]:
+    if _type == "event":
+        # If more than 1 then there is a colliso - uh oh.
+        assert ret["Count"] <= 1
+
+        if ret["Count"] != 0:
+            item = ret["Items"][0]
             sig = cast(str, item["PK"]).split("#")[1]
-            res[sig] = cast(str, item["SK"])
+
+            return {sig: item["SK"]}
+
+        return {}
+    elif _type == "function":
+        if ret["Count"] != 0:
+            for item in ret["Items"]:
+                sig = cast(str, item["PK"]).split("#")[1]
+                res[sig].append(cast(str, item["SK"]))
 
     return res
 
@@ -95,9 +113,9 @@ def get_abi_data_contract(
 def get_abi_data_pseudo_batch(_type: str, _signatures: List[HexBytes]):
     assert _type in ["function", "event"]
 
-    ret: Dict[str, Optional[List[Dict[str, Tuple[str, str]]]]] = {}
     threads: List[Tuple[HexBytes, Greenlet]] = []
     signatures = set(_signatures)
+    ret = defaultdict(list)
 
     for signature in signatures:
         t = gevent.spawn(get_abi_data, _type, signature)
@@ -106,7 +124,19 @@ def get_abi_data_pseudo_batch(_type: str, _signatures: List[HexBytes]):
     gevent.joinall([t[1] for t in threads])
 
     for sig, thread in threads:
-        ret[sig.hex()] = thread.get()
+        res = thread.get()
+
+        if res:
+            for _sig, _res in res.items():
+                assert sig.hex() == _sig
+
+                if _type == "function":
+                    ret[_sig].extend(_res)
+                elif _type == "event":
+                    ret[_sig] = _res
+        else:
+            # `defaultdict(list)` will init an empty list.
+            ret[sig.hex()]
 
     return ret
 

@@ -29,7 +29,7 @@ provider:
             - - "arn:aws:dynamodb"
               - Ref: "AWS::Region"
               - Ref: "AWS::AccountId"
-              - "table/prod-abi-decoder"
+              - "table/prod-abi-decoder-new"
     - Effect: Allow # Lambda logs on cloudwatch
       Action:
         - logs:CreateLogGroup
@@ -51,11 +51,17 @@ custom:
   tableName: prod-abi-decoder
 
 functions:
-  fetch:
-    handler: server/fetch.fetch_hex
+  fetch_signature:
+    handler: server/fetch.fetch_signature
     events:
       - http:
-          path: fetch
+          path: fetch/signature
+          method: get
+  fetch_contract:
+    handler: server/fetch.fetch_contract
+    events:
+      - http:
+          path: fetch/contract/{chain}/{address}
           method: get
 
 resources:
