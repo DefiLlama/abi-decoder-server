@@ -90,24 +90,26 @@ def get_abi_data_contract(
 ) -> Optional[Dict[str, str]]:
     assert _type in ["function", "event"]
 
-    res: Dict[str, str] = {}
+    if _type == "function":
+        assert len(signature) == 4  # Function selector.
+    elif _type == "event":
+        assert len(signature) == 32  # Topic hash.
 
     ret = abi_table.query(
         KeyConditionExpression=Key("PK").eq(
             f"contract#{chain.lower()}#{address.lower()}"
         )
-        & Key("SK").begins_with(f"{_type}#{signature.hex()}")
+        & Key("SK").eq(f"{_type}#{signature.hex()}")
     )
 
-    # Should only be no more than 1 result.
+    # Should only be no more than 1 result for both functions and events.
     assert ret["Count"] <= 1
 
     if ret["Count"] != 0:
         item = ret["Items"][0]
         sig = cast(str, item["SK"]).split("#")[1]
-        res[sig] = cast(str, item["verbose_abi"])
 
-    return res
+        return {sig: cast(str, item["verbose_abi"])}
 
 
 def get_abi_data_pseudo_batch(_type: str, _signatures: List[HexBytes]):
@@ -143,20 +145,34 @@ def get_abi_data_pseudo_batch(_type: str, _signatures: List[HexBytes]):
 
 def get_abi_data_contract_pseudo_batch(
     _type: str, _signatures: List[HexBytes], chain: str, address: str
-):
+) -> Dict[str, str]:
     assert _type in ["function", "event"]
 
-    ret: Dict[str, Optional[List[Dict[str, Tuple[str, str]]]]] = {}
     threads: List[Tuple[HexBytes, Greenlet]] = []
     signatures = set(_signatures)
+    ret: Dict[str, str] = {}
 
     for signature in signatures:
-        t = gevent.spawn(get_abi_data_contract, _type, signature, chain, address)
+        t = gevent.spawn(
+            get_abi_data_contract,
+            _type,
+            signature,
+            chain,
+            address,
+        )
         threads.append((signature, t))
 
     gevent.joinall([t[1] for t in threads])
 
     for sig, thread in threads:
-        ret[sig.hex()] = thread.get()
+        res = thread.get()
+
+        if res:
+            for _sig, _res in res.items():
+                assert sig.hex() == _sig
+                ret[_sig] = _res
+        else:
+            # `defaultdict(list)` will init an empty list.
+            ret[sig.hex()]
 
     return ret
