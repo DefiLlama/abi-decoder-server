@@ -185,7 +185,7 @@ def handle_source_code(chain: str, address: str, path: str) -> None:
 
 
 def run_chain(chain: str) -> None:
-    _path = os.path.join(SCS_PATH, chain, "contracts")
+    _path = os.path.join(SCS_PATH, chain, "contracts", "mainnet")
 
     for dir, _, files in os.walk(_path):
         for file in files:
