@@ -3,9 +3,9 @@
 
 from hexbytes import HexBytes
 
-from lib.helpers.types import APIGatewayEvent, Context
-from lib.helpers.serializer import Response
-from lib.helpers.aws import (
+from src.lib.helpers.types import APIGatewayEvent, Context
+from src.lib.helpers.serializer import Response
+from src.lib.helpers.aws import (
     get_abi_data_contract_pseudo_batch,
     get_abi_data_pseudo_batch,
 )
@@ -52,6 +52,10 @@ def fetch_contract(event: APIGatewayEvent, context: Context):
     if (ev := event.get("queryStringParameters")) is not None:
         function_sigs = ev.get("functions", "").split(",")
         event_sigs = ev.get("events", "").split(",")
+
+        # Okay, I may be a *bit* stupid and forgot to include the `0x` prefix
+        # in the database keys...
+        address = HexBytes(address).hex()[2:]
 
         res = {}
 

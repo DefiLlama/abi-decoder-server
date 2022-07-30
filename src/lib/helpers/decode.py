@@ -7,10 +7,10 @@ from eth_typing.evm import ChecksumAddress
 from hexbytes import HexBytes
 from web3 import Web3
 
-from lib.modules.etherscan import create_contract
-from lib.helpers.aws import upload_abi_data
-from lib.modules import sigeth
-from lib.modules import _4byte
+from ..modules.etherscan import create_contract
+from ..helpers.aws import upload_abi_data
+from ..modules import sigeth
+from ..modules import _4byte
 
 
 def _decode_function_signature(

@@ -10,7 +10,7 @@ from gevent import Greenlet
 import gevent
 import boto3
 
-from lib.helpers.data import AWS_DDB_ABI_DECODER
+from .data import AWS_DDB_ABI_DECODER
 
 
 abi_table = boto3.resource("dynamodb").Table(AWS_DDB_ABI_DECODER)
@@ -145,12 +145,12 @@ def get_abi_data_pseudo_batch(_type: str, _signatures: List[HexBytes]):
 
 def get_abi_data_contract_pseudo_batch(
     _type: str, _signatures: List[HexBytes], chain: str, address: str
-) -> Dict[str, str]:
+) -> Dict[str, Optional[str]]:
     assert _type in ["function", "event"]
 
     threads: List[Tuple[HexBytes, Greenlet]] = []
     signatures = set(_signatures)
-    ret: Dict[str, str] = {}
+    ret: Dict[str, Optional[str]] = {}
 
     for signature in signatures:
         t = gevent.spawn(
@@ -172,7 +172,6 @@ def get_abi_data_contract_pseudo_batch(
                 assert sig.hex() == _sig
                 ret[_sig] = _res
         else:
-            # `defaultdict(list)` will init an empty list.
-            ret[sig.hex()]
+            ret[sig.hex()] = None
 
     return ret

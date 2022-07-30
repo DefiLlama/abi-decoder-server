@@ -3,7 +3,7 @@ service: abi-decoder-api
 provider:
   name: aws
   runtime: python3.8
-  memorySize: 128 # 128MB
+  memorySize: 256 # 256MB
   timeout: 10
   region: eu-central-1
   endpointType: REGIONAL # Set to regional because the api gateway will be behind a cloudfront distribution
@@ -44,21 +44,28 @@ provider:
               - "log-group:/aws/lambda/*:*:*"
 
   environment:
-    ETHERSCAN_APIKEY: ${.env:ETHERSCAN_APIKEY}
     AWS_DDB_ABI_DECODER: ${self:custom.tableName}
 
+package:
+  individually: true
+  include:
+    - "!*"
+    - "!**"
+    - src/**/**.py
+
 custom:
-  tableName: prod-abi-decoder
+  tableName: prod-abi-decoder-new
 
 functions:
   fetch_signature:
-    handler: server/fetch.fetch_signature
+    handler: src/server/fetch.fetch_signature
     events:
       - http:
           path: fetch/signature
           method: get
   fetch_contract:
-    handler: server/fetch.fetch_contract
+    memorySize: 512 # 512MB
+    handler: src/server/fetch.fetch_contract
     events:
       - http:
           path: fetch/contract/{chain}/{address}
@@ -70,5 +77,4 @@ resources:
 
 plugins:
   - serverless-python-requirements
-  - serverless-ignore
   - serverless-offline
